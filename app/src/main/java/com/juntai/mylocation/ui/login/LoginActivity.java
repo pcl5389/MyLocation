@@ -6,7 +6,6 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -29,13 +28,14 @@ import com.tencent.map.geolocation.TencentLocationManager;
 import com.tencent.map.geolocation.TencentLocationRequest;
 
 import java.lang.ref.WeakReference;
+
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
-import static com.tencent.map.geolocation.TencentLocationRequest.REQUEST_LEVEL_NAME;
+import static com.tencent.map.geolocation.TencentLocationRequest.REQUEST_LEVEL_GEO;
 
 public class LoginActivity extends AppCompatActivity {
-    private static final int LOC_NOTIFICATIONID = 99;
+    private static final int LOC_NOTIFICATIONID = 2020;
     static TencentLocationManager mLocationManager;
     static InnerLocationListener mLocationListener;
     static TencentLocationRequest request;
@@ -51,33 +51,30 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mac=getMacAddress();
 
+        setContentView(R.layout.activity_login);
         if (Build.VERSION.SDK_INT >= 23) {
             requirePermission();
         }
+        mac= LocService.mac=getMacAddress();
 
         mLocationManager= TencentLocationManager.getInstance(this);
         mLocationListener = new InnerLocationListener(new WeakReference<LoginActivity>(this));
         request= TencentLocationRequest.create();
         request.setAllowGPS(true);
-        request.setRequestLevel(REQUEST_LEVEL_NAME);
+        request.setRequestLevel(REQUEST_LEVEL_GEO);
         request.setAllowDirection(false);
-
         mLocationManager.enableForegroundLocation(LOC_NOTIFICATIONID, buildNotification());
-
-        setContentView(R.layout.activity_login);
-
-        final EditText usernameEditText = findViewById(R.id.username);
-        usernameEditText.setText(mac);
-
-        final EditText passwordEditText = findViewById(R.id.password);
-        final Button loginButton = findViewById(R.id.login);
-        final ProgressBar loadingProgressBar = findViewById(R.id.loading);
 
         Intent intentOne = new Intent(this, LocService.class);
         intentOne.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startService(intentOne);
+
+        final EditText usernameEditText = findViewById(R.id.username);
+        usernameEditText.setText(mac);
+        final EditText passwordEditText = findViewById(R.id.password);
+        final Button loginButton = findViewById(R.id.login);
+        final ProgressBar loadingProgressBar = findViewById(R.id.loading);
 
         loginButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -86,7 +83,8 @@ public class LoginActivity extends AppCompatActivity {
                     requirePermission();
                 }
                 loadingProgressBar.setVisibility(View.VISIBLE);
-                mLocationManager.requestSingleFreshLocation(null, mLocationListener, Looper.getMainLooper());
+                mLocationManager.requestSingleFreshLocation(request, mLocationListener, Looper.getMainLooper());
+
                 String my_location=String.format("%s|%s|%s|%s", lat, lng, addr, area);
                 Toast.makeText(getApplicationContext(), my_location, Toast.LENGTH_LONG).show();
                 loadingProgressBar.setVisibility(View.INVISIBLE);
@@ -120,9 +118,9 @@ public class LoginActivity extends AppCompatActivity {
 
         builder.setSmallIcon(R.mipmap.ic_launcher_small)
                 .setContentTitle("定位中")
-                .setContentText("正在定位")
-                .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher_round))
-                .setWhen(System.currentTimeMillis());
+                .setContentText("正在定位");
+                //.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
+                //.setWhen(System.currentTimeMillis());
 
         if (android.os.Build.VERSION.SDK_INT >= 16) {
             notification = builder.build();
@@ -135,7 +133,6 @@ public class LoginActivity extends AppCompatActivity {
     public static void send_location()
     {
         mLocationManager.requestLocationUpdates(request, mLocationListener, Looper.getMainLooper());
-        //mLocationManager.requestSingleFreshLocation(null, mLocationListener, Looper.getMainLooper());
     }
 
     @AfterPermissionGranted(1)
@@ -169,7 +166,8 @@ public class LoginActivity extends AppCompatActivity {
         }
         @Override
         public void onLocationChanged(TencentLocation _loc, int error, String reason) {
-            mLocationManager.removeUpdates(mLocationListener);
+            if(_loc.getLatitude()>1)
+                mLocationManager.removeUpdates(mLocationListener);
             if(lat!=_loc.getLatitude() || lng!=_loc.getLongitude())
             {
                 String my_location=String.format("%s|%s|%s|%s",
@@ -188,7 +186,7 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
     public String getMacAddress() {
-        String macAddress = null ;
+        String macAddress = null;
         WifiManager wifiManager =
                 (WifiManager)getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         WifiInfo info = ( null == wifiManager ? null : wifiManager.getConnectionInfo());

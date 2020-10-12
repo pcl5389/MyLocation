@@ -18,6 +18,7 @@ public class LocService extends Service {
     private static final String IP="106.13.178.13";
     private static final int PORT = 9527;
     private static Timer timer=null;
+    public static  String mac="";
     /** 绑定的客户端接口 */
     IBinder mBinder;
     /** 标识是否可以使用onRebind */
@@ -26,7 +27,7 @@ public class LocService extends Service {
     @Override
     public void onCreate() {
         //连接服务器
-        Send("Hello!"+ LoginActivity.mac);
+        Send("Hello!"+ mac);
         //启动定时器
         if(timer==null)
         {
@@ -60,7 +61,7 @@ public class LocService extends Service {
                     try{
                         socket=new Socket(IP,PORT);
                         OutputStream outputStream = socket.getOutputStream();
-                        outputStream.write(Content.getBytes("UTF-8"));
+                        outputStream.write(("Hello!"+ mac+"\0"+Content).getBytes("UTF-8"));
                         outputStream.flush();
                         bConnected=true;
                     }catch(Exception e){
